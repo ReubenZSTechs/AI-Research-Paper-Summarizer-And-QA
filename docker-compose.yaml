@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+
+  backend:
+    build:
+      context: .
+      dockerfile: deployment/docker/backend.Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./logs:/app/logs
+      - ./outputs:/app/outputs
+    environment:
+      - PYTHONPATH=/app
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deployment/docker/frontend.Dockerfile
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./deployment/nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - backend
+      - frontend
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+
+  qdrant:
+    image: qdrant/qdrant
+    ports:
+      - "6333:6333"
+
+  neo4j:
+    image: neo4j:latest
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/password
+
+  ngrok:
+    image: ngrok/ngrok
+    command: http nginx:80
+    depends_on:
+      - nginx

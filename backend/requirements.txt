@@ -1,0 +1,52 @@
+# =========================================================
+# API SERVER
+# =========================================================
+fastapi
+uvicorn[standard]
+pydantic
+
+# =========================================================
+# AI / LLM
+# =========================================================
+torch
+transformers
+accelerate
+sentence-transformers
+ollama
+
+# =========================================================
+# RAG / VECTOR DATABASE
+# =========================================================
+chromadb
+langchain
+langchain-core
+langchain-community
+langchain-huggingface
+langchain-chroma
+# faiss-cpu
+
+# =========================================================
+# DATA PROCESSING
+# =========================================================
+numpy
+pandas
+scikit-learn
+scipy
+tqdm
+
+# =========================================================
+# CONFIG / UTILS
+# =========================================================
+pyyaml
+python-dotenv
+requests
+httpx
+# aiohttp
+
+# =========================================================
+# TOKENIZER SUPPORT
+# =========================================================
+sentencepiece
+protobuf
+tiktoken
+einops

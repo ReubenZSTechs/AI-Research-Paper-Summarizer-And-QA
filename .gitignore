@@ -1,0 +1,8 @@
+.env
+/training/datasets/
+/models/
+/logs/
+/notebooks/
+/training/outputs
+
+DIRECTORY_README.md

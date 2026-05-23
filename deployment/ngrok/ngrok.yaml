@@ -1,0 +1,15 @@
+version: "2"
+
+tunnels:
+
+  frontend:
+    addr: frontend:8501
+    proto: http
+
+  backend:
+    addr: backend:8000
+    proto: http
+
+  nginx:
+    addr: nginx:80
+    proto: http
