@@ -4,6 +4,6 @@
 /logs/
 /notebooks/
 /training/outputs
-/training/checkpoint/
+/training/checkpoint
 
 DIRECTORY_README.md

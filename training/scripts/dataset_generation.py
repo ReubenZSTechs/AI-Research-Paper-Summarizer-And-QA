@@ -431,6 +431,8 @@ def build_graph(state: PDFState, AgentManager: AgentManager):
     builder.add_edge("accept_node", END)
     builder.add_edge('reject_node', END)
 
+    return builder.compile()
+
 
 
 # Define helper functions
