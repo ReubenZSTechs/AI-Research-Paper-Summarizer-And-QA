@@ -28,6 +28,7 @@ CONFIG = {
     'YEAR_FILTER': 2022,
     'LOG_FILEPATH': "training/logs/dataset_generation_logs.jsonl",
     'METADATA_FILEPATH': "training/dataset/processed/filtered_results.json",
+    'CHECKPOINT_FILEPATH': "training/checkpoint/arxiv_id_check.txt",
 }
 
 with open(CONFIG['PAPER_CLASSIFIER_MODEL']) as f:
@@ -502,12 +503,22 @@ def download_arxiv_pdf(arXiv_id: str):
 
     return output_path
 
-    
+
+def add_to_checkpoint(arXiv_id: str):
+    with open(CONFIG['CHECKPOINT_FILEPATH'], "a", encoding='utf-8') as f:
+        f.write(f"{arXiv_id}\n")
+
+
+def load_checkpoint_ids():
+    with open(CONFIG['CHECKPOINT_FILEPATH'], "r", encoding='utf-8') as f:
+        return set(paper_id.strip() for paper_id in f if paper_id.strip())
 
 
 if __name__ == "__main__":
     agent_manager = AgentManager()
     graph = build_graph(PDFState, agent_manager)
+
+    processed_ids = load_checkpoint_ids()
     
     results_arr = []
     processed = 0
@@ -533,6 +544,12 @@ if __name__ == "__main__":
                 continue
 
             arxiv_id = paper.get("id", "")
+
+            if arxiv_id in processed_ids:
+                continue
+            else:
+                add_to_checkpoint(arXiv_id=arxiv_id)
+
             title = paper.get('title', "").strip()
             abstract = paper.get('abstract', "").strip()
             categories = paper.get('categories', "")
@@ -551,7 +568,7 @@ if __name__ == "__main__":
 
             title_keywords = [word.lower() for word in title.split()]
 
-            keywords = title_keywords + categories
+            keywords = title_keywords + category_keywords
 
             tqdm.write(f"\nChecking {arxiv_id} | Year = {year} | Title = {title}")
             tqdm.write(f"Keywords: {keywords}")
