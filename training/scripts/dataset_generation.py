@@ -509,20 +509,21 @@ if __name__ == "__main__":
     agent_manager = AgentManager()
     graph = build_graph(PDFState, agent_manager)
     
+    results_arr = []
     processed = 0
 
     with open(os.getenv("DATASET_RAW_FILEPATH")) as f:
         iterator = tqdm(f, desc=f"Processing arXiv")
 
         for line in iterator:
-            if CONFIG['NUM_DOCUMENTS'] and len(result) >= CONFIG['NUM_DOCUMENTS']:
+            if CONFIG['NUM_DOCUMENTS'] and len(results_arr) >= CONFIG['NUM_DOCUMENTS']:
                 break
 
             processed += 1
 
             iterator.set_postfix({
                 'processed': processed,
-                'accepted': len(result)
+                'accepted': len(results_arr)
             })
 
             try:
@@ -611,6 +612,8 @@ if __name__ == "__main__":
             }
 
             log_selection(file_path=CONFIG['LOG_FILEPATH'], payload=payload_log)
+
+            results_arr.append(payload_log)
 
             tqdm.write(f"Saved to {txt_path}")
             sleep(0.5)
