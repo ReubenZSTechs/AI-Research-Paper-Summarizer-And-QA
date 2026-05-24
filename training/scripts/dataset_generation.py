@@ -537,6 +537,8 @@ if __name__ == "__main__":
             abstract = paper.get('abstract', "").strip()
             categories = paper.get('categories', "")
 
+            category_keywords = [category.lower().replace(".", "") for category in categories.split()]
+
             if not abstract:
                 print(f"No abstract")
                 continue
@@ -547,7 +549,7 @@ if __name__ == "__main__":
                 tqdm.write(f"Skipping {arxiv_id} | year = {year}")
                 continue
 
-            title_keywords = [word for word in title.split()]
+            title_keywords = [word.lower() for word in title.split()]
 
             keywords = title_keywords + categories
 
