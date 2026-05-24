@@ -325,7 +325,6 @@ class AgentManager:
         result = self.call_classifier_model(abstract=abstract)
 
         return {
-            'error_message': result['result'],
             'is_rag': result['is_rag'],
             'is_rl': result['is_rl'],
             'is_agentic_workflow': result['is_agentic_workflow'],
@@ -383,7 +382,7 @@ class AgentManager:
         return "classify_using_llm"
     
 
-    def route_after_llm(state: PDFState):
+    def route_after_llm(self, state: PDFState):
         confidence_ref = state.get('confidence', {})
 
         max_conf = max(confidence_ref.get("rag", 0), confidence_ref.get("rl", 0), confidence_ref.get("agentic_workflow", 0), confidence_ref.get("kg", 0))
