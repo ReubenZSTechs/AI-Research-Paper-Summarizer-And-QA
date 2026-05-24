@@ -512,7 +512,6 @@ if __name__ == "__main__":
     processed = 0
 
     with open(os.getenv("DATASET_RAW_FILEPATH")) as f:
-        print(f"Processing {len(f)} documents...")
         iterator = tqdm(f, desc=f"Processing arXiv")
 
         for line in iterator:
