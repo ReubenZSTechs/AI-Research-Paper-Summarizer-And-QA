@@ -544,7 +544,7 @@ if __name__ == "__main__":
             year = extract_year(arXiv_id=arxiv_id)
 
             if year < CONFIG['YEAR_FILTER']:
-                tqdm.write(f"Skipping {arxiv_id} | {title} --> year = {year}")
+                tqdm.write(f"Skipping {arxiv_id} | year = {year}")
                 continue
 
             title_keywords = [word for word in title.split()]
