@@ -412,7 +412,7 @@ def build_graph(state: PDFState, AgentManager: AgentManager):
         'keyword_filter_node',
         AgentManager.route_after_keyword,
         {
-            'accept': 'accept',
+            'accept': 'accept_node',
             'classify_using_llm': 'llm_classify_node'
         }
     )
