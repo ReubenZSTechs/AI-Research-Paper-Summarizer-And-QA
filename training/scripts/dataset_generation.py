@@ -603,6 +603,7 @@ if __name__ == "__main__":
 
             if not is_relevant or max_conf < CONFIG['CONFIDENCE_THRESHOLD']:
                 tqdm.write(f"REJECTED [{label_str_format} | max_conf = {max_conf} | year = {year}]")
+                continue
 
             tqdm.write(f"ACCEPTED [{label_str_format} | max_conf = {max_conf} | year = {year}] --> Downloading")
 
