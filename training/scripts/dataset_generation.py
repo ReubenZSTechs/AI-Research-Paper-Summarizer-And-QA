@@ -548,8 +548,6 @@ if __name__ == "__main__":
 
             if arxiv_id in processed_ids:
                 continue
-            else:
-                add_to_checkpoint(arXiv_id=arxiv_id)
 
             title = paper.get('title', "").strip()
             abstract = paper.get('abstract', "").strip()
@@ -603,6 +601,7 @@ if __name__ == "__main__":
 
             if not is_relevant or max_conf < CONFIG['CONFIDENCE_THRESHOLD']:
                 tqdm.write(f"REJECTED [{label_str_format} | max_conf = {max_conf} | year = {year}]")
+                add_to_checkpoint(arXiv_id=arxiv_id)
                 continue
 
             tqdm.write(f"ACCEPTED [{label_str_format} | max_conf = {max_conf} | year = {year}] --> Downloading")
@@ -637,6 +636,7 @@ if __name__ == "__main__":
             results_arr.append(payload_log)
 
             tqdm.write(f"Saved to {txt_path}")
+            add_to_checkpoint(arXiv_id=arxiv_id)
             sleep(0.5)
 
     tqdm.write(f"\nFinished processing dataset")
