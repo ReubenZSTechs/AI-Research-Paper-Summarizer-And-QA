@@ -21,13 +21,13 @@ from tqdm import tqdm
 CONFIG = {
     'ENTITY_EXTRACTOR_CONFIG': "training/configs/models/entity_extractor.yaml",
     'PAPER_CLASSIFIER_MODEL': "training/configs/models/paper_classifier_model.yaml",
-    'CONFIDENCE_THRESHOLD': 0.95,
-    'ENTITY_THRESHOLD': 0.9,
+    'CONFIDENCE_THRESHOLD': 0.65,
+    'ENTITY_THRESHOLD': 0.65,
     "DATA_SAVE_FILEPATH": "training/datasets/processed",
     'NUM_DOCUMENTS': 150,
     'YEAR_FILTER': 2022,
     'LOG_FILEPATH': "training/logs/dataset_generation_logs.jsonl",
-    'METADATA_FILEPATH': "training/dataset/processed/filtered_results.json",
+    'METADATA_FILEPATH': "training/datasets/processed/filtered_results.json",
     'CHECKPOINT_FILEPATH': "training/checkpoint/arxiv_id_check.txt",
 }
 
@@ -145,19 +145,19 @@ class AgentManager:
         """
 
         response = chat(
-            model=self.classifier_model,
+            model=self.entity_model,
             messages=[
                 {
                     'role': 'system',
-                    'content': self.classifier_system_prompt
+                    'content': self.entity_system_prompt
                 },
                 {
                     'role': 'user',
                     'content': prompt
                 }
             ],
-            options=self.classifier_generation,
-            format=self.classifier_response_type
+            options=self.entity_generation,
+            format=self.entity_response_type
         )
 
         result = response['message']['content']
@@ -168,7 +168,7 @@ class AgentManager:
         except Exception as e:
             return {
                 'error_message': f"Extraction failed. Error: {e}",
-                'entities': result.get("entities", [])
+                'entities': []
             }
         
         return {
@@ -489,9 +489,9 @@ def extract_year(arXiv_id: str):
 
 
 def download_arxiv_pdf(arXiv_id: str):
-    output_path = os.path.join(f"CONFIG['DATA_SAVE_FILEPATH']/txt", f"{arxiv_id}.pdf")
+    output_path = os.path.join(f"{CONFIG['DATA_SAVE_FILEPATH']}/pdf", f"{arXiv_id}.pdf")
 
-    pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+    pdf_url = f"https://arxiv.org/pdf/{arXiv_id}.pdf"
 
     try:
         response = requests.get(pdf_url, timeout=60)
@@ -519,10 +519,16 @@ if __name__ == "__main__":
     agent_manager = AgentManager()
     graph = build_graph(PDFState, agent_manager)
 
-    processed_ids = load_checkpoint_ids()
-    
     results_arr = []
     processed = 0
+
+    processed_ids = load_checkpoint_ids()
+
+    with open(CONFIG['LOG_FILEPATH'], "r", encoding='utf-8') as f:
+        accepted_ids = f.readlines()
+
+    for payload in accepted_ids:
+        results_arr.append(payload)
 
     with open(os.getenv("DATASET_RAW_FILEPATH")) as f:
         iterator = tqdm(f, desc=f"Processing arXiv")

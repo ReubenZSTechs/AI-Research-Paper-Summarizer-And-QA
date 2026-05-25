@@ -89,6 +89,10 @@ system_prompt: |
 
   General graphs unrelated to knowledge representation are NOT sufficient.
 
+  A paper is NOT a Knowledge Graph paper merely because it discusses graphs, relations, categories, topology, or mathematical structures.
+
+  The paper must involve semantic knowledge representation, entities and relationships for information organization, reasoning, retrieval, or AI/NLP applications.
+
   -----------------------------------
   CONFIDENCE RULES
   -----------------------------------
