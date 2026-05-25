@@ -563,12 +563,14 @@ if __name__ == "__main__":
 
             if not abstract:
                 print(f"No abstract")
+                add_to_checkpoint(arXiv_id=arxiv_id)
                 continue
 
             year = extract_year(arXiv_id=arxiv_id)
 
             if year < CONFIG['YEAR_FILTER']:
                 tqdm.write(f"Skipping {arxiv_id} | year = {year}")
+                add_to_checkpoint(arXiv_id=arxiv_id)
                 continue
 
             title_keywords = [word.lower() for word in title.split()]
