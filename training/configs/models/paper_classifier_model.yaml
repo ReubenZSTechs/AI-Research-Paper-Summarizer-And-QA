@@ -1,5 +1,5 @@
 name: PaperClassifier
-model: deepseek-r1:32b
+model: deepseek-r1:14b
 
 role: paper_classifier
 task: classify_paper
