@@ -515,11 +515,34 @@ def load_checkpoint_ids():
     with open(CONFIG['CHECKPOINT_FILEPATH'], "r", encoding='utf-8') as f:
         return set(paper_id.strip() for paper_id in f if paper_id.strip())
 
+
 def clean_text(text: str) -> str:
     text = text.replace("\n", " ")
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
+
+def is_ai_related(categories: list[str]) -> bool:
+    AI_RELATED_CATEGORIES = {
+        "cs.AI",
+        "cs.LG",
+        "cs.CL",
+        "cs.CV",
+        "cs.IR",
+        "cs.RO",
+        "cs.MA",
+        "cs.SE",
+        "cs.DB",
+        "cs.DC",
+        "cs.HC",
+        "cs.NE",
+        "cs.SY",
+        "stat.ML",
+        "eess.AS",
+        "eess.SP"
+    }
+
+    return any(category in AI_RELATED_CATEGORIES for category in categories)
 
 if __name__ == "__main__":
     agent_manager = AgentManager()
@@ -585,6 +608,11 @@ if __name__ == "__main__":
             title_keywords = [word.lower() for word in title.split()]
 
             keywords = title_keywords + category_keywords
+
+            if not is_ai_related(categories=keywords):
+                tqdm.write(f"Not related to AI | Category = {category_keywords}")
+                add_to_checkpoint(arXiv_id=arxiv_id)
+                continue
 
             tqdm.write(f"\nChecking {arxiv_id} | Year = {year} | Title = {title}")
             tqdm.write(f"Keywords: {keywords}")
