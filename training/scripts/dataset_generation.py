@@ -12,6 +12,7 @@ from datetime import datetime
 from time import sleep
 import fitz
 import requests
+import re
 
 import yaml
 import json
@@ -514,6 +515,11 @@ def load_checkpoint_ids():
     with open(CONFIG['CHECKPOINT_FILEPATH'], "r", encoding='utf-8') as f:
         return set(paper_id.strip() for paper_id in f if paper_id.strip())
 
+def clean_text(text: str) -> str:
+    text = text.replace("\n", " ")
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
 
 if __name__ == "__main__":
     agent_manager = AgentManager()
@@ -558,6 +564,9 @@ if __name__ == "__main__":
             title = paper.get('title', "").strip()
             abstract = paper.get('abstract', "").strip()
             categories = paper.get('categories', "")
+
+            title = clean_text(text=title)
+            abstract = clean_text(text=abstract)
 
             category_keywords = [category.lower().replace(".", "") for category in categories.split()]
 
