@@ -26,7 +26,7 @@ CONFIG = {
     'ENTITY_THRESHOLD': 0.65,
     "DATA_SAVE_FILEPATH": "training/datasets/processed",
     'NUM_DOCUMENTS': 150,
-    'YEAR_FILTER': 2022,
+    'YEAR_FILTER': 2024,
     'LOG_FILEPATH': "training/logs/dataset_generation_logs.jsonl",
     'METADATA_FILEPATH': "training/datasets/processed/filtered_results.json",
     'CHECKPOINT_FILEPATH': "training/checkpoint/arxiv_id_check.txt",
@@ -524,22 +524,22 @@ def clean_text(text: str) -> str:
 
 def is_ai_related(categories: list[str]) -> bool:
     AI_RELATED_CATEGORIES = {
-        "cs.AI",
-        "cs.LG",
-        "cs.CL",
-        "cs.CV",
-        "cs.IR",
-        "cs.RO",
-        "cs.MA",
-        "cs.SE",
-        "cs.DB",
-        "cs.DC",
-        "cs.HC",
-        "cs.NE",
-        "cs.SY",
-        "stat.ML",
-        "eess.AS",
-        "eess.SP"
+        "csai",
+        "cslg",
+        "cscl",
+        "cscv",
+        "csir",
+        "csro",
+        "csma",
+        "csse",
+        "csdb",
+        "csdc",
+        "cshc",
+        "csne",
+        "cssy",
+        "statml",
+        "eessas",
+        "eesssp"
     }
 
     return any(category in AI_RELATED_CATEGORIES for category in categories)
@@ -610,7 +610,7 @@ if __name__ == "__main__":
             keywords = title_keywords + category_keywords
 
             if not is_ai_related(categories=keywords):
-                tqdm.write(f"Not related to AI | Category = {category_keywords}")
+                tqdm.write(f"\nNot related to AI | Category = {category_keywords}")
                 add_to_checkpoint(arXiv_id=arxiv_id)
                 continue
 
