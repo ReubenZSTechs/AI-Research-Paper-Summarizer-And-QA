@@ -1,0 +1,6 @@
+agent:
+  model_name: meta-llama/Llama-3.2-3B-Instruct
+  adapter_path: training/outputs/adapters/sft_dpo/summarizer_agent
+  load_in_4bit: true
+
+
