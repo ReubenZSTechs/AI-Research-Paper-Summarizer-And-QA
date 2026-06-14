@@ -1,0 +1,14 @@
+model_name_or_path: meta-llama/Llama-3.2-3B-Instruct
+adapter_name_or_path: ./training/outputs/adapters/synthesizer/sft
+
+
+### Method
+stage: sft
+do_train: false
+do_eval: false
+do_predict: true
+finetuning_type: lora
+
+
+### Dataset
+dataset_dir: training/datasets/formatted/sft/test
