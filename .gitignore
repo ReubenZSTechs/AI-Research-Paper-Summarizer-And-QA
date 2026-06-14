@@ -1,8 +1,12 @@
 .env
-/training/datasets/
-/models/
-/logs/
-/notebooks/
-/training/outputs
+training/datasets/
+models/
+logs/
+notebooks/
+training/outputs/
+training/checkpoint/
+training/LLaMA-Factory/
+*.pdf
+*.txt
 
 DIRECTORY_README.md

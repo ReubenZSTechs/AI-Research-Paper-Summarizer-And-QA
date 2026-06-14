@@ -1,0 +1,51 @@
+model_name_or_path: meta-llama/Llama-3.2-3B-Instruct
+
+
+### Method
+stage: sft
+do_train: true
+do_eval: true
+do_predict: false
+finetuning_type: lora
+
+
+### LoRA Config
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+
+
+### Dataset
+dataset_dir: ./training/datasets/formatted/sft/train
+dataset: synthesizer_train_sft
+eval_dataset: synthesizer_val_sft
+template: gemma4
+resize_vocab: true
+
+
+### Output
+output_dir: ./training/outputs/adapters/synthesizer/sft
+logging_steps: 1
+save_steps: 50
+save_total_limit: 5
+plot_loss: true
+report_to: tensorboard
+
+
+### Train
+per_device_train_batch_size: 2
+gradient_accumulation_steps: 8
+learning_rate: 2e-5
+num_train_epochs: 5
+lr_scheduler_type: cosine
+warmup_steps: 50
+
+
+# Eval
+per_device_eval_batch_size: 2
+eval_steps: 1000
+
+
+# Mixed Precision
+bf16: true
