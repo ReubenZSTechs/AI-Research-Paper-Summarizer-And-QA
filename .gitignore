@@ -6,7 +6,8 @@ notebooks/
 training/outputs/
 training/checkpoint/
 training/LLaMA-Factory/
-*.pdf
-*.txt
+
+.vscode/
+__pycache__/
 
 DIRECTORY_README.md
