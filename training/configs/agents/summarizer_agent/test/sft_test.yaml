@@ -1,5 +1,5 @@
 model_name_or_path: google/gemma-4-E4B-it
-adapter_name_or_path: ./training/outputs/adapters/sft/synthesizer
+adapter_name_or_path: ./training/outputs/adapters/sft/summarizer
 
 
 ### Method
@@ -14,12 +14,12 @@ quantization_type: nf4
 
 ### Dataset
 dataset_dir: training/datasets/formatted/sft/test
-dataset: synthesizer_test_sft
-eval_dataset: synthesizer_test_sft
+dataset: summarizer_test_sft
+eval_dataset: summarizer_test_sft
 template: gemma4
 
 
 ### Configs
 per_device_eval_batch_size: 2
 predict_with_generate: true
-output_dir: ./training/configs/outputs/predictions/sft/synthesizer
+output_dir: ./training/configs/outputs/predictions/sft/summarizer
