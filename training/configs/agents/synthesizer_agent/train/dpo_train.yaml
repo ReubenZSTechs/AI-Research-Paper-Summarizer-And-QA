@@ -2,7 +2,7 @@ model_name_or_path: google/gemma-4-E4B-it
 
 
 ### Method
-stage: sft
+stage: dpo
 do_train: true
 do_eval: true
 do_predict: false
@@ -18,15 +18,24 @@ lora_dropout: 0.05
 lora_target: all
 
 
+### DPO Config
+pref_beta: 0.1
+pref_loss: sigmoid
+
+
+### Reference Model
+ref_model: google/gemma-4-E4B-it
+
+
 ### Dataset
-dataset_dir: ./training/datasets/formatted/sft/train
-dataset: synthesizer_train_sft
-eval_dataset: synthesizer_val_sft
+dataset_dir: ./training/datasets/formatted/dpo/train
+dataset: synthesizer_train_dpo
+eval_dataset: synthesizer_val_dpo
 template: gemma4
 
 
 ### Output
-output_dir: ./training/outputs/adapters/sft/synthesizer
+output_dir: ./training/outputs/adapters/dpo/synthesizer
 logging_steps: 1
 save_steps: 50
 save_total_limit: 5
