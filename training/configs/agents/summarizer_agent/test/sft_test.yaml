@@ -1,4 +1,4 @@
-model_name_or_path: google/gemma-4-E4B-it
+model_name_or_path: google/gemma-4-E2B-it
 adapter_name_or_path: ./training/outputs/adapters/sft/summarizer
 
 
