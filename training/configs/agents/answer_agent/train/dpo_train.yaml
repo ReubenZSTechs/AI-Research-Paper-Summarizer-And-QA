@@ -1,4 +1,4 @@
-model_name_or_path: google/gemma-4-E4B-it
+model_name_or_path: google/gemma-4-E2B-it
 
 
 ### Method
@@ -24,7 +24,7 @@ pref_loss: sigmoid
 
 
 ### Reference Model
-ref_model: google/gemma-4-E4B-it
+ref_model: google/gemma-4-E2B-it
 
 
 ### Dataset
