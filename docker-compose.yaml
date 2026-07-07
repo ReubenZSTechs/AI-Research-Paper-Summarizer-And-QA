@@ -10,11 +10,11 @@ services:
     ports:
       - "8000:8000"
     command: >
-      --model google/gemma-4-E2B-it
+      --model /root/.cache/huggingface/quantized/models--google--gemma-4-E2B-it-quantized
       --served-model-name gemma4
-      --dtype bfloat16
+      --quantization gptq
       --max-model-len 4096
-      --gpu-memory-utilization 0.9
+      --gpu-memory-utilization 0.7
       --port 8000
     deploy:
       resources:

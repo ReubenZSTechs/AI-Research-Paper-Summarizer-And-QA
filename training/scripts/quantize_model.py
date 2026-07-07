@@ -1,31 +1,54 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import argparse
+import os
 from pathlib import Path
+import torch
 
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from awq import AutoAWQForCausalLM
-from transformers import AutoTokenizer
+from llmcompressor import oneshot
+from llmcompressor.modifiers.gptq import GPTQModifier
+
 
 
 def quantize_model(model_name: str, quantized_name: str):
-    quant_path = Path("C:/Users/reube/.cache/huggingface/quantized") / quantized_name
+    quant_path = Path(os.getenv("HUGGINGFACE_QUANTIZE_FOLDERPATH")).expanduser() / quantized_name
     quant_path.mkdir(exist_ok=True, parents=True)
 
     print(f"Loading {model_name}...")
-    model = AutoAWQForCausalLM.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map={"":0}, dtype=torch.bfloat16)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
-    quant_config = {
-        'zero_point': True,
-        'q_group_size': 128,
-        'w_bit': 4,
-        'version': 'GEMM'
-    }
+    print(f"Loading calibration dataset")
+    quant_config = GPTQModifier(
+    scheme="W4A16",
+    targets="Linear",
+    ignore=[
+        'lm_head',
+        're:.*vision_tower.*',
+        're:.*audio_tower.*',
+        're:.*per_layer_model_projection.*',
+        're:.*per_layer_.*',       # catches related per-layer embedding projections if present
+        're:.*altup.*',            # Gemma 3n/4 AltUp modules, if present, are also often unsuitable for GPTQ
+    ]
+)
 
-    print(f"Quantizing model...")
-    model.quantize(tokenizer=tokenizer, quant_config=quant_config)
+    print(f"Calibrating model with quant settings")
+    oneshot(
+        model=model,
+        dataset="ultrachat_200k",
+        splits="train_sft+train_gen+test_gen",
+        recipe=quant_config,
+        output_dir=str(quant_path),
+        max_seq_length=1024,
+        num_calibration_samples=128,
+        pipeline="basic"
+    )
 
-    print(f"Saving model to {quant_path}")
-    model.save_quantized(str(quant_path))
+    print(f"Saving tokenizer to {quant_path}")
     tokenizer.save_pretrained(str(quant_path))
 
     print(f"Model quantized to {quant_path}")
