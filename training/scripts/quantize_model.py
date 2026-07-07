@@ -19,7 +19,7 @@ def quantize_model(model_name: str, quantized_name: str):
     quant_path.mkdir(exist_ok=True, parents=True)
 
     print(f"Loading {model_name}...")
-    model = AutoModelForCausalLM.from_pretrained(model_name, device_map={"":0}, dtype=torch.bfloat16)
+    model = AutoModelForCausalLM.from_pretrained(model_name, device_map="auto", dtype=torch.bfloat16, max_memory={0: "13GiB", "cpu": "64GiB"})
     tokenizer = AutoTokenizer.from_pretrained(model_name)
 
     print(f"Loading calibration dataset")
@@ -43,7 +43,7 @@ def quantize_model(model_name: str, quantized_name: str):
         splits="train_sft+train_gen+test_gen",
         recipe=quant_config,
         output_dir=str(quant_path),
-        max_seq_length=1024,
+        max_seq_length=512,
         num_calibration_samples=128,
         pipeline="basic"
     )
