@@ -8,7 +8,7 @@ services:
     volumes:
       - ${HUGGINGFACE_QUANTIZE_FOLDERPATH}:/root/.cache/huggingface/hub
     ports:
-      - "8000:8000"
+      - "15000:15000"
     environment:
       - HF_TOKEN=${HF_TOKEN}
       - HF_HUB_OFFLINE=1
@@ -17,7 +17,7 @@ services:
       --served-model-name gemma4
       --max-model-len 4096
       --gpu-memory-utilization 0.7
-      --port 8000
+      --port 15000
     deploy:
       resources:
         reservations:
@@ -26,9 +26,31 @@ services:
               count: 1
               capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:15000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 1800s
+    restart: unless-stopped
+
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: deployment/docker/backend.Dockerfile
+    container_name: fastapi-server
+    runtime: nvidia
+    ports:
+      - "8000:8000"
+    environment:
+      - LLM_URL=http://LLM:15000/v1
+    depends_on:
+      LLM:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     restart: unless-stopped
