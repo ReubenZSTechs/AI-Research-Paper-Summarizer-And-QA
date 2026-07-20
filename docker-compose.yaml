@@ -13,8 +13,10 @@ services:
       - HF_TOKEN=${HF_TOKEN}
       - HF_HUB_OFFLINE=1
     command: >
-      --model /root/.cache/huggingface/hub/models--google--gemma-4-E2B-it-quantized
-      --served-model-name gemma4
+      --model nvidia/Llama-3.1-8B-Instruct-NVFP4
+      --quantization modelopt_fp4
+      --hf-overrides '{"tie_word_embeddings": false}'
+      --served-model-name Llama
       --max-model-len 4096
       --gpu-memory-utilization 0.7
       --port 15000
