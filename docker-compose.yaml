@@ -4,7 +4,6 @@ services:
     image: vllm/vllm-openai:latest
     container_name: LLM-server
     runtime: nvidia
-    shm_size: "2gb"
     volumes:
       - ${HUGGINGFACE_QUANTIZE_FOLDERPATH}:/root/.cache/huggingface/hub
     ports:
@@ -16,7 +15,7 @@ services:
       --model nvidia/Llama-3.1-8B-Instruct-NVFP4
       --quantization modelopt_fp4
       --hf-overrides '{"tie_word_embeddings": false}'
-      --served-model-name Llama
+      --served-model-name llm-server
       --max-model-len 4096
       --gpu-memory-utilization 0.7
       --port 15000
@@ -27,6 +26,9 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
+    depends_on:
+      embedding:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:15000/health"]
       interval: 30s
@@ -36,11 +38,44 @@ services:
     restart: unless-stopped
 
 
-  fastapi:
+  embedding:
+    image: vllm/vllm-openai:latest
+    container_name: embedding-server
+    runtime: nvidia
+    volumes:
+      - ${HUGGINGFACE_QUANTIZE_FOLDERPATH}:/root/.cache/huggingface/hub
+    ports:
+      - "15001:15001"
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+      - HF_HUB_OFFLINE=1
+    command: >
+      --model BAAI/bge-m3
+      --served-model-name embedding-server
+      --max-model-len 4096
+      --gpu-memory-utilization 0.2
+      --port 15001
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:15001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    restart: unless-stopped
+
+
+  backend:
     build:
       context: .
       dockerfile: deployment/docker/backend.Dockerfile
-    container_name: fastapi-server
+    container_name: backend-server
     runtime: nvidia
     ports:
       - "8000:8000"
@@ -49,10 +84,57 @@ services:
     depends_on:
       LLM:
         condition: service_healthy
+      embedding:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 15s
       timeout: 5s
       retries: 3
       start_period: 30s
+    restart: unless-stopped
+
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deployment/docker/frontend.Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    container_name: frontend-server
+    ports:
+      - "8080:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:80"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok-tunnel
+    environment:
+      - NGROK_AUTHTOKEN=${NGROK_TOKEN}
+    ports:
+      - "4040:4040"
+    volumes:
+      - ./deployment/ngrok/ngrok.yaml:/etc/ngrok.yaml
+    command: ["start", "--all", "--config", "/etc/ngrok.yaml"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4040/api/tunnels"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      frontend:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
     restart: unless-stopped
