@@ -4,8 +4,8 @@ set -e
 
 echo "Deploying system..."
 
-docker-compose pull
-docker-compose build
-docker-compose up -d
+docker compose pull
+docker compose build
+docker compose --env-file .env up
 
 echo "Deployment complete."

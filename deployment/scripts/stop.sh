@@ -2,6 +2,6 @@
 
 echo "Stopping system..."
 
-docker-compose down
+docker compose --env-file .env down
 
 echo "All services stopped."
