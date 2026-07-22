@@ -44,6 +44,7 @@ def log_llm_calls(func):
                 data_payload['prompt_tokens'] = prompt_tokens
                 data_payload['generated_tokens'] = generated_tokens
                 data_payload['token_generation'] = token_generation_metric
+                data_payload['total_tokens'] = prompt_tokens + generated_tokens
                 data_payload['model_latency'] = latency
                 data_payload['output'] = result
 
@@ -96,6 +97,7 @@ def log_output_call(func):
                 data_payload['prompt_tokens'] = prompt_tokens
                 data_payload['generated_tokens'] = generated_tokens
                 data_payload['token_generation'] = token_generation_metric
+                data_payload['total_tokens'] = prompt_tokens + generated_tokens
                 data_payload['model_latency'] = latency
                 data_payload['output'] = output
 
