@@ -1,5 +1,5 @@
 .env
-training/datasets/
+training/data/
 models/
 logs/
 notebooks/

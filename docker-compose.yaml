@@ -17,7 +17,7 @@ services:
       --hf-overrides '{"tie_word_embeddings": false}'
       --served-model-name llm-server
       --max-model-len 4096
-      --gpu-memory-utilization 0.7
+      --gpu-memory-utilization 0.6
       --port 15000
     deploy:
       resources:
@@ -28,6 +28,8 @@ services:
               capabilities: [gpu]
     depends_on:
       embedding:
+        condition: service_healthy
+      reranker:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:15000/health"]
@@ -53,7 +55,7 @@ services:
       --model BAAI/bge-m3
       --served-model-name embedding-server
       --max-model-len 4096
-      --gpu-memory-utilization 0.2
+      --gpu-memory-utilization 0.15
       --port 15001
     deploy:
       resources:
@@ -64,6 +66,39 @@ services:
               capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:15001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 300s
+    restart: unless-stopped
+
+
+  reranker:
+    image: vllm/vllm-openai:latest
+    container_name: reranker-server
+    runtime: nvidia
+    volumes:
+      - ${HUGGINGFACE_QUANTIZE_FOLDERPATH}:/root/.cache/huggingface/hub
+    ports:
+      - "15002:15002"
+    environment:
+      - HF_TOKEN=${HF_TOKEN}
+      - HF_HUB_OFFLINE=1
+    command: >
+      --model BAAI/bge-reranker-v2-m3
+      --served-model-name reranker-server
+      --max-model-len 4096
+      --gpu-memory-utilization 0.15
+      --port 15002
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:15002/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -86,6 +121,8 @@ services:
         condition: service_healthy
       embedding:
         condition: service_healthy
+      reranker:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 15s
@@ -93,6 +130,9 @@ services:
       retries: 3
       start_period: 30s
     restart: unless-stopped
+
+
+# TODO Add postgres and pgadmin for advanced RAG support
 
 
   frontend:
