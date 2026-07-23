@@ -28,6 +28,7 @@ processing_lock = Lock()
 async def lifespan(app: FastAPI):
     logger.info(f"Connecting to vLLM servers")
 
+    
 
     logger.info(f"Connected to vLLM servers")
     yield
