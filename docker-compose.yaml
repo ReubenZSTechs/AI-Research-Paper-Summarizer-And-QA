@@ -16,8 +16,9 @@ services:
       --quantization modelopt_fp4
       --hf-overrides '{"tie_word_embeddings": false}'
       --served-model-name llm-server
-      --max-model-len 4096
+      --max-model-len 32768
       --gpu-memory-utilization 0.6
+      --kv-cache-dtype turboquant_4bit_nc
       --port 15000
     deploy:
       resources:
@@ -123,6 +124,10 @@ services:
         condition: service_healthy
       reranker:
         condition: service_healthy
+      database:
+        condition: service_healthy
+      database_admin:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
       interval: 15s
@@ -133,6 +138,48 @@ services:
 
 
 # TODO Add postgres and pgadmin for advanced RAG support
+  database:
+    image: pgvector/pgvector:pg16 # Postgres + PGVector for VDB
+    container_name: database-server
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+  
+
+  database_admin:
+    image: dpage/pgadmin4:latest
+    container_name: database-admin-server
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - postgres_admin_data:/var/lib/pgadmin
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:80/misc/ping').status==200 else sys.exit(1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
 
 
   frontend:
@@ -178,3 +225,19 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+
+networks:
+  default:
+    name: ai_summariser_and_qa_net
+    external: true
+
+volumes:
+  postgres_data:
+    name: postgres_database
+    # external: true
+  postgres_admin_data:
+    name: postgres_admin
+    # external: true
+  
+  
