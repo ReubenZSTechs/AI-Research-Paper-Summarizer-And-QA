@@ -21,44 +21,73 @@ class PostgresService:
             )
 
 
-    def insert_chunk_embedding_batch(self, payload: list[tuple[str, str, str, list[float]]]):
+    def get_document_by_hash(self, sha256: str) -> Optional[dict]:
+        with self.connection_manager.get_cursor(commit=False) as cur:
+            cur.execute(
+                "SELECT document_id FROM documents WHERE sha256 = %s",
+                (sha256,),
+            )
+            return cur.fetchone()
+
+
+    def insert_document(self, scope: str, sha256: str, title: Optional[str] = None,
+                         source_uri: Optional[str] = None, user_id: Optional[str] = None,
+                         session_id: Optional[str] = None, num_pages: Optional[int] = None) -> str:
+        with self.connection_manager.get_cursor(commit=True) as cur:
+            cur.execute(
+                """
+                    INSERT INTO documents (user_id, session_id, scope, title, source_uri, sha256, num_pages)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    RETURNING document_id
+                """,
+                (user_id, session_id, scope, title, source_uri, sha256, num_pages),
+            )
+            return cur.fetchone()["document_id"]
+
+
+    def insert_parent_chunk_batch(self, payload: list[tuple[str, str, int, str]]) -> None:
         if not payload:
             return
-
         with self.connection_manager.get_cursor(commit=True) as cur:
             execute_values(
-                cur=cur,
-                sql="""
-                    INSERT INTO chunk_embeddings (chunk_id, source, chunk_text, embedding)
+                cur,
+                """
+                    INSERT INTO parent_chunks (parent_id, document_id, parent_index, parent_text)
                     VALUES %s
-                    ON CONFLICT (chunk_id) DO NOTHING
+                    ON CONFLICT (parent_id) DO NOTHING
                 """,
-                argslist=payload
+                payload,
             )
 
 
-    def search_similar_chunks(self, query_embedding: list[float], top_k: int = 10, source: Optional[str] = None):
+    def insert_chunk_embedding_batch(self, payload: list[tuple[str, str, int, str, int, list[float]]]) -> None:
+        if not payload:
+            return
         with self.connection_manager.get_cursor(commit=True) as cur:
-            if source:
-                cur.execute(
-                    """
-                        SELECT chunk_id, source, chunk_text, embedding <=> %s::vector AS distance
-                        FROM chunk_embeddings
-                        WHERE source = %s
-                        ORDER BY embedding <=> %s::vector
-                        LIMIT %s
-                    """, (query_embedding, source, query_embedding, top_k)
-                )
-            else:
-                cur.execute(
-                    """
-                        SELECT chunk_id, source, chunk_text, embedding <=> %s::vector AS distance
-                        FROM chunk_embeddings
-                        ORDER BY embedding <=> %s::vector
-                        LIMIT %s
-                    """, (query_embedding, query_embedding, top_k)
-                )
+            execute_values(
+                cur,
+                """
+                    INSERT INTO chunk_embeddings
+                        (document_id, parent_id, ordinal, chunk_text, token_count, embedding)
+                    VALUES %s
+                    ON CONFLICT (document_id, ordinal) DO NOTHING
+                """,
+                payload,
+            )
 
+
+    def search_similar_chunks(self, document_id: str, query_embedding: list[float], top_k: int = 10) -> list[dict]:
+        with self.connection_manager.get_cursor(commit=False) as cur:
+            cur.execute(
+                """
+                    SELECT chunk_id, parent_id, chunk_text, embedding <=> %s::vector AS distance
+                    FROM chunk_embeddings
+                    WHERE document_id = %s
+                    ORDER BY embedding <=> %s::vector
+                    LIMIT %s
+                """,
+                (query_embedding, document_id, query_embedding, top_k),
+            )
             return cur.fetchall()
 
 

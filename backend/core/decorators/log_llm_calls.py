@@ -27,7 +27,7 @@ def log_llm_calls(func):
 
             data_payload = {
                 "input_prompt": user_prompt,
-                "model_name": self.model_config['agent']['base_model'],
+                "model_name": self.agent_config['agent']['base_model'],
                 "status": status
             }
 
