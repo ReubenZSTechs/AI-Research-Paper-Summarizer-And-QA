@@ -1,5 +1,9 @@
 import psycopg2
+import psycopg2.extras
+import psycopg2.pool
 from contextlib import contextmanager
+
+from pgvector.psycopg2 import register_vector
 
 
 class ConnManager:
@@ -10,24 +14,24 @@ class ConnManager:
         self._pool_conn.closeall()
 
     @contextmanager
-    def cursor(self, commit: bool = False):
+    def get_cursor(self, commit: bool = False):
         conn = self._pool_conn.getconn()
 
         try:
+            register_vector(conn)
             cursor = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            yield cursor
 
-            if commit:
-                conn.commit()
+            try:
+                yield cursor
+                if commit:
+                    conn.commit()
 
-        except Exception:
-            conn.rollback()
-            raise
+            except Exception:
+                conn.rollback()
+                raise
+
+            finally:
+                cursor.close()
 
         finally:
-            cursor.close()
             self._pool_conn.putconn(conn)
-
-
-    def get_cursor(self, commit: bool = False):
-        return self.cursor(commit=False)

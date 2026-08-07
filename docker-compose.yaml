@@ -1,7 +1,7 @@
 services:
 
   LLM:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.26.0
     container_name: LLM-server
     runtime: nvidia
     volumes:
@@ -42,8 +42,8 @@ services:
 
 
   embedding:
-    image: vllm/vllm-openai:latest
-    container_name: embedding-server
+    image: vllm/vllm-openai:v0.26.0
+    container_name: embedder-server
     runtime: nvidia
     volumes:
       - ${HUGGINGFACE_QUANTIZE_FOLDERPATH}:/root/.cache/huggingface/hub
@@ -75,7 +75,7 @@ services:
 
 
   reranker:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.26.0
     container_name: reranker-server
     runtime: nvidia
     volumes:
@@ -160,12 +160,13 @@ services:
   
 
   database_admin:
-    image: dpage/pgadmin4:latest
+    image: dpage/pgadmin4:9.17
     container_name: database-admin-server
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
       PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_LISTEN_PORT: 5000
     ports:
       - "127.0.0.1:5000:5000"
     volumes:
@@ -174,7 +175,7 @@ services:
       database:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:80/misc/ping').status==200 else sys.exit(1)\""]
+      test: ["CMD-SHELL", "python3 -c \"import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://localhost:5000/misc/ping').status==200 else sys.exit(1)\""]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -204,7 +205,7 @@ services:
 
 
   ngrok:
-    image: ngrok/ngrok:latest
+    image: ngrok/ngrok:3.39.10-alpine
     container_name: ngrok-tunnel
     environment:
       - NGROK_AUTHTOKEN=${NGROK_TOKEN}
