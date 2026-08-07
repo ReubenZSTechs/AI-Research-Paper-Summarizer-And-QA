@@ -10,4 +10,7 @@ training/LLaMA-Factory/
 .vscode/
 __pycache__/
 
-DIRECTORY_README.md
+training/logs/
+backend/core/logging
+
+DIRECTORY_README.mdbackend/core/logging/*.jsonl

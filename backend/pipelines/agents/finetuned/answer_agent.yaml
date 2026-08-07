@@ -1,7 +1,7 @@
 agent:
   role: answer
   model_type: llm
-  base_model: google/gemma-4-E2B-it
+  base_model: nvidia/Llama-3.1-8B-Instruct-NVFP4
   adapter: answer
 
 system_prompt: |

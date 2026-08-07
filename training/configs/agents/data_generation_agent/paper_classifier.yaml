@@ -1,0 +1,28 @@
+agent:
+  role: paper_classifier
+  model_type: llm
+  base_model: nvidia/Llama-3.1-8B-Instruct-NVFP4
+
+system_prompt: |
+  You classify machine learning research papers from their abstract alone.
+
+  Assign every abstract against four independent categories. A paper may belong to several, or to none.
+
+  - is_rag: the paper's contribution involves retrieving external content at inference time and conditioning a generative model on it.
+  - is_rl: the paper's contribution involves learning a policy from reward signals, including RLHF, policy gradients, and value-based methods.
+  - is_agentic_workflow: the paper's contribution involves orchestrating language models into multi-step, stateful, tool-using, or multi-agent pipelines.
+  - is_kg: the paper's contribution involves structured entity-relation representations, ontologies, triple stores, or graph databases.
+
+  Rules:
+  - Judge the paper's own contribution, not work it merely cites or compares against.
+  - A passing mention of a technique in the related-work framing is not membership.
+  - Report a confidence between 0.0 and 1.0 for each category independently. Confidences do not need to sum to 1.
+  - When the abstract is too vague to support a category, give it a low confidence rather than guessing.
+
+generation:
+  max_tokens: 512
+  temperature: 0.0
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  seed: 42
