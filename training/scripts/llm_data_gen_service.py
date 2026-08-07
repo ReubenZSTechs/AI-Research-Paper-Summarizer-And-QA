@@ -5,7 +5,7 @@ import random
 import re
 import signal
 import threading
-from collections import defaultdict
+from collections import Counter, defaultdict
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
@@ -26,13 +26,14 @@ CONFIG = {
     "SKIP_LOG": Path("training/logs/chunk_skips.jsonl"),
     "CHECKPOINT_FILE": Path("training/checkpoint/dataset_generation_state.json"),
     "CONCURRENCY": 32,
-    "CHECKPOINT_EVERY": 1,
+    "CHECKPOINT_EVERY": 5,
     "SEED": 42,
-    "CHUNK_BUDGET": {"answer": 5000, "summarizer": 5000},
+    "PARTITION_SHARES": {"answer": 0.35, "summarizer": 0.65},
+    "CHUNK_BUDGET": {"answer": 4000, "summarizer": 8000},
     "PAIRS_PER_CHUNK": 2,
     "WINDOW_SIZE": 3,
-    "WINDOWS_PER_SOURCE": 6,
-    "SYNTHESIS_GROUP": 4,
+    "WINDOWS_PER_SOURCE": 12,
+    "SYNTHESIS_GROUP": 3, 
     "REWRITER_MAX_RECORDS": 8000,
     "DISTRACTOR_RATE": 0.40,
     "UNANSWERABLE_RATE": 0.07,
@@ -85,14 +86,14 @@ TEACHER_QA_SYSTEM = (
 )
 
 
-def writer_path(output_dir: Path, writer_name: str) -> Path:
-    agent = writer_name.rsplit("_", 1)[0]
-    return output_dir / agent / f"{writer_name}.jsonl"
-
-
 def derive_rng(seed: int, key: str) -> random.Random:
     digest = hashlib.sha256(f"{seed}:{key}".encode("utf-8")).digest()
     return random.Random(int.from_bytes(digest[:8], "big"))
+
+
+def writer_path(output_dir: Path, writer_name: str) -> Path:
+    agent = writer_name.rsplit("_", 1)[0]
+    return output_dir / agent / f"{writer_name}.jsonl"
 
 
 class ShutdownSignal:
@@ -152,7 +153,7 @@ class RunState:
 
     def save(self) -> None:
         payload = {
-            "version": 2,
+            "version": 3,
             "rng_state": serialise_rng(self.rng),
             "used": sorted(self.used),
             "stages": self.stages,
@@ -391,41 +392,72 @@ class ChunkPool:
         self.skip_writer = skip_writer
         self.records: dict[str, dict] = {}
         self.by_source: dict[str, list[str]] = defaultdict(list)
+        self.rejected_at_load = 0
         self._window_starts: dict[str, list[int]] = {}
+
         self._load(path)
         self._all_keys = list(self.records)
-        self._chunk_queue = [key for key in self.records if key not in state.used]
-        self.rng.shuffle(self._chunk_queue)
+        self.stage_sources = self._partition_sources(CONFIG["PARTITION_SHARES"])
+        self._stage_queues = self._build_queues()
 
     def _load(self, path: Path) -> None:
         with open(path, "r", encoding="utf-8") as handle:
             for line in handle:
                 record = json.loads(line)
+                accepted, _ = self.gate.accept_context(record["chunk_text"])
+                if not accepted:
+                    self.rejected_at_load += 1
+                    continue
                 self.records[record["chunk_id"]] = record
                 self.by_source[record["source"]].append(record["chunk_id"])
+
         for source in self.by_source:
             self.by_source[source].sort(key=lambda key: self.records[key]["ordinal"])
 
-    def sources(self) -> list[str]:
-        names = list(self.by_source)
-        self.rng.shuffle(names)
-        return names
+    def _partition_sources(self, shares: dict[str, float]) -> dict[str, list[str]]:
+        ordered = sorted(self.by_source, key=lambda s: (-len(self.by_source[s]), s))
+        total = sum(len(keys) for keys in self.by_source.values())
+        quotas = {stage: max(1.0, total * share) for stage, share in shares.items()}
+        assigned = {stage: [] for stage in shares}
+        filled = {stage: 0 for stage in shares}
 
-    def draw_chunk(self) -> dict | None:
-        while self._chunk_queue:
-            key = self._chunk_queue.pop()
+        for source in ordered:
+            stage = min(shares, key=lambda s: filled[s] / quotas[s])
+            assigned[stage].append(source)
+            filled[stage] += len(self.by_source[source])
+
+        for stage in assigned:
+            self.rng.shuffle(assigned[stage])
+
+        return assigned
+
+    def _build_queues(self) -> dict[str, list[str]]:
+        queues = {}
+        for stage, sources in self.stage_sources.items():
+            keys = [
+                key
+                for source in sources
+                for key in self.by_source[source]
+                if key not in self.state.used
+            ]
+            self.rng.shuffle(keys)
+            queues[stage] = keys
+        return queues
+
+    def available(self, stage: str) -> int:
+        return len(self._stage_queues[stage])
+
+    def draw_chunk(self, stage: str) -> dict | None:
+        queue = self._stage_queues[stage]
+        while queue:
+            key = queue.pop()
             if key in self.state.used:
                 continue
             self.state.used.add(key)
-            record = self.records[key]
-            accepted, reason = self.gate.accept_context(record["chunk_text"])
-            if not accepted:
-                self.log_skip(key, reason)
-                continue
-            return record
+            return self.records[key]
         return None
 
-    def draw_window(self, source: str, size: int) -> tuple[list[dict], str] | None:
+    def draw_window_from(self, source: str, size: int) -> tuple[list[dict], str] | None:
         starts = self._starts_for(source, size)
         while starts:
             start = starts.pop()
@@ -447,9 +479,7 @@ class ChunkPool:
             record = self.records[rng.choice(self._all_keys)]
             if record["source"] == exclude_source:
                 continue
-            accepted, _ = self.gate.accept_context(record["chunk_text"])
-            if accepted:
-                return record["chunk_text"]
+            return record["chunk_text"]
         return None
 
     def _starts_for(self, source: str, size: int) -> list[int]:
@@ -680,11 +710,21 @@ class RejectedBuilder:
 
 
 def run_concurrent(draw, process, emit, on_skip, target, initial, desc,
-                    shutdown, checkpoint, workers):
+                    shutdown, checkpoint, workers, status_fn=None):
     accepted = initial
-    progress = tqdm(total=target, initial=initial, desc=desc)
-    since_checkpoint = 0
+    attempted = 0
+    skip_reasons = Counter()
+    progress = tqdm(total=target, initial=initial, desc=desc, mininterval=0.3)
+    since_report = 0
     exhausted = False
+
+    def report() -> None:
+        if attempted == 0:
+            return
+        rate = (accepted - initial) / attempted * 100
+        top_reason = skip_reasons.most_common(1)[0][0] if skip_reasons else "-"
+        extra = f" | {status_fn()}" if status_fn else ""
+        tqdm.write(f"[{desc}] {accepted:,}/{target:,} accept={rate:.0f}% top_skip={top_reason}{extra}")
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         pending = {}
@@ -710,30 +750,42 @@ def run_concurrent(draw, process, emit, on_skip, target, initial, desc,
 
             for future in done:
                 item = pending.pop(future)
+                attempted += 1
 
                 try:
                     payload, reason = future.result()
                 except Exception as error:
-                    on_skip(item, f"worker_error:{type(error).__name__}")
+                    reason = f"worker_error:{type(error).__name__}"
+                    on_skip(item, reason)
+                    skip_reasons[reason] += 1
                     continue
 
                 if payload is None:
                     on_skip(item, reason)
+                    skip_reasons[reason] += 1
                     continue
 
                 emit(payload)
                 accepted += 1
                 progress.update(1)
 
-                since_checkpoint += 1
-                if since_checkpoint >= CONFIG["CHECKPOINT_EVERY"]:
+                since_report += 1
+                if since_report >= CONFIG["CHECKPOINT_EVERY"]:
                     checkpoint()
-                    since_checkpoint = 0
+                    # report()
+                    since_report = 0
 
             if accepted < target and not shutdown.requested:
                 fill()
 
     progress.close()
+
+    if attempted and accepted == initial:
+        tqdm.write(
+            f"[{desc}] warning: 0 accepted out of {attempted} attempted. "
+            f"Top skip reasons: {skip_reasons.most_common(3)}"
+        )
+
     return accepted, exhausted
 
 
@@ -765,7 +817,7 @@ class AnswerGenerator:
             self.pool.log_skip(chunk["chunk_id"], reason)
 
         accepted, exhausted = run_concurrent(
-            draw=self.pool.draw_chunk,
+            draw=lambda: self.pool.draw_chunk("answer"),
             process=self.process,
             emit=emit,
             on_skip=on_skip,
@@ -904,6 +956,8 @@ class SummarizerGenerator:
         self.shutdown = shutdown
         self.checkpoint = checkpoint
         self.system_prompt = summarizer_agent.agent_system_prompt
+        self._sources_total = 0
+        self._sources_done = 0
 
     def run(self, budget: int, sft: JsonlWriter, dpo: JsonlWriter) -> None:
         if self.state.stage_done("summarizer"):
@@ -935,6 +989,7 @@ class SummarizerGenerator:
             shutdown=self.shutdown,
             checkpoint=self.checkpoint,
             workers=CONFIG["CONCURRENCY"],
+            status_fn=lambda: f"sources={self._sources_done}/{self._sources_total}",
         )
 
         self.state.stages["summarizer"]["accepted"] = accepted
@@ -945,13 +1000,19 @@ class SummarizerGenerator:
         self.checkpoint()
 
     def _make_draw(self, window_size: int):
+        sources = self.pool.stage_sources["summarizer"]
+        self._sources_total = len(sources)
+
         def generator():
-            for source in self.pool.sources():
-                for _ in range(CONFIG["WINDOWS_PER_SOURCE"]):
-                    drawn = self.pool.draw_window(source, window_size)
+            for source in sources:
+                produced = 0
+                while produced < CONFIG["WINDOWS_PER_SOURCE"]:
+                    drawn = self.pool.draw_window_from(source, window_size)
                     if drawn is None:
                         break
+                    produced += 1
                     yield drawn
+                self._sources_done += 1
 
         iterator = generator()
 
@@ -1134,7 +1195,7 @@ class RewriterGenerator:
             if question.strip() not in self.state.rewriter_seen
         ]
         completed = self.state.stages["prompt_rewriter"]["accepted"]
-        progress = tqdm(total=len(pending) + completed, initial=completed, desc="prompt_rewriter")
+        progress = tqdm(total=len(pending) + completed, initial=completed, desc="prompt_rewriter", mininterval=0.3)
         since_checkpoint = 0
 
         for clean in pending:
@@ -1172,6 +1233,21 @@ class RewriterGenerator:
 
         self.checkpoint()
 
+
+
+def describe_pool(pool: ChunkPool) -> None:
+    print()
+    print(f"Usable chunks:        {len(pool.records):,}")
+    print(f"Rejected at load:     {pool.rejected_at_load:,}")
+    print(f"Sources:              {len(pool.by_source):,}")
+
+    for stage in sorted(pool.stage_sources):
+        sources = pool.stage_sources[stage]
+        chunks = sum(len(pool.by_source[s]) for s in sources)
+        budget = CONFIG["CHUNK_BUDGET"].get(stage)
+        headroom = "-" if budget is None else f"budget {budget:,}"
+        print(f"  {stage:<12} {len(sources):>4} sources  {chunks:>7,} chunks  ({headroom})")
+    print()
 
 
 def report_progress(state: RunState, writers: dict[str, JsonlWriter]) -> None:
@@ -1244,6 +1320,13 @@ def main() -> None:
 
     gate = QualityGate(CONFIG["MIN_WORDS"], CONFIG["MIN_ALPHA_RATIO"], CONFIG["MIN_GROUNDING"])
     pool = ChunkPool(CONFIG["CHUNK_FILE"], gate, rng, state, skip_writer)
+    describe_pool(pool)
+
+    pool_progress = tqdm(
+        total=len(pool.records), initial=len(state.used),
+        desc="chunks available", position=0, leave=True,
+    )
+    pool.progress = pool_progress
 
     teacher = ThreadLocalAgent(str(CONFIG["TEACHER_AGENT_CONFIG"]), factory=TeacherAgent)
     answer_agent = ThreadLocalAgent(str(CONFIG["ANSWER_AGENT_CONFIG"]))
@@ -1272,6 +1355,8 @@ def main() -> None:
         RewriterGenerator(
             corruptor, rewriter_prompt, state, shutdown, checkpoint
         ).run(CONFIG["REWRITER_MAX_RECORDS"], writers["prompt_rewriter_sft"])
+
+    pool_progress.close()
 
     checkpoint()
     report_progress(state, writers)

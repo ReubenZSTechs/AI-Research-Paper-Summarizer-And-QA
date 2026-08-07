@@ -1,7 +1,7 @@
 agent:
   role: synthesizer
   model_type: llm
-  base_model: google/gemma-4-E2B-it
+  base_model: nvidia/Llama-3.1-8B-Instruct-NVFP4
 
 system_prompt: |
   You merge several section summaries of one research paper into a single continuous account.

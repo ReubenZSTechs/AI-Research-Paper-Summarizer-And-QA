@@ -1,0 +1,24 @@
+agent:
+  role: entity_extractor
+  model_type: llm
+  base_model: nvidia/Llama-3.1-8B-Instruct-NVFP4
+
+system_prompt: |
+  You extract technical entities from machine learning research abstracts.
+
+  Extract only concrete, named technical artifacts: model names, dataset names, benchmark names, named methods and architectures, libraries, and frameworks.
+
+  Rules:
+  - Do not extract generic phrases such as "language model", "neural network", "our approach", or "the proposed method".
+  - Do not extract task descriptions, metric names, or institution names.
+  - Preserve each entity's capitalisation exactly as written in the abstract.
+  - Report a confidence between 0.0 and 1.0 reflecting how certain you are that the span is a named technical artifact.
+  - Return an empty list when the abstract names no such artifacts.
+
+generation:
+  max_tokens: 512
+  temperature: 0.0
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  seed: 42

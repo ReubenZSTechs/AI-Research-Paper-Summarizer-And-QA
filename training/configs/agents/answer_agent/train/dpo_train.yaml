@@ -1,4 +1,4 @@
-model_name_or_path: google/gemma-4-E2B-it
+model_name_or_path: meta-llama/Llama-3.1-8B-Instruct
 
 
 ### Method
@@ -16,6 +16,8 @@ lora_rank: 16
 lora_alpha: 32
 lora_dropout: 0.05
 lora_target: all
+adapter_name_or_path: ./training/outputs/adapters/sft/answer
+create_new_adapter: true
 
 
 ### DPO Config
@@ -23,15 +25,12 @@ pref_beta: 0.1
 pref_loss: sigmoid
 
 
-### Reference Model
-ref_model: google/gemma-4-E2B-it
-
-
 ### Dataset
-dataset_dir: ./training/datasets/formatted/dpo/train
+dataset_dir: ./training/data/formatted/dpo
 dataset: answer_train_dpo
 eval_dataset: answer_val_dpo
-template: gemma4
+template: llama3
+cutoff_len: 4096
 
 
 ### Output
@@ -54,6 +53,8 @@ warmup_steps: 50
 
 # Eval
 per_device_eval_batch_size: 2
+eval_strategy: steps
+eval_steps: 50
 
 
 # Mixed Precision
