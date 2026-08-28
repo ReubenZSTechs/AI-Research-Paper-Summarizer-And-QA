@@ -17,11 +17,10 @@ lora_alpha: 32
 lora_dropout: 0.05
 lora_target: all
 adapter_name_or_path: ./training/outputs/adapters/sft/summarizer
-create_new_adapter: true
 
 
 ### DPO Config
-pref_beta: 0.1
+pref_beta: 0.3
 pref_loss: sigmoid
 
 
@@ -30,7 +29,7 @@ dataset_dir: ./training/data/formatted/dpo
 dataset: summarizer_train_dpo
 eval_dataset: summarizer_val_dpo
 template: llama3
-cutoff_len: 4096
+cutoff_len: 1536
 
 
 ### Output
@@ -43,16 +42,20 @@ report_to: tensorboard
 
 
 ### Train
-per_device_train_batch_size: 2
+per_device_train_batch_size: 1
 gradient_accumulation_steps: 8
-learning_rate: 2e-5
+learning_rate: 5e-6
 num_train_epochs: 5
 lr_scheduler_type: cosine
 warmup_steps: 50
+gradient_checkpointing: true
+# resume_from_checkpoint: true
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
 
 
 # Eval
-per_device_eval_batch_size: 2
+per_device_eval_batch_size: 1
 eval_strategy: steps
 eval_steps: 50
 

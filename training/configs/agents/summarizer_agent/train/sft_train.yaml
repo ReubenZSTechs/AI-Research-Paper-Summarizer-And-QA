@@ -42,6 +42,9 @@ learning_rate: 1.5e-4
 num_train_epochs: 5
 lr_scheduler_type: cosine
 warmup_steps: 50
+# resume_from_checkpoint: true
+load_best_model_at_end: true
+metric_for_best_model: eval_loss
 
 
 # Eval

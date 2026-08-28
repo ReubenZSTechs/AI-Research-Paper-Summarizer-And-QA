@@ -17,12 +17,11 @@ dataset_dir: training/data/formatted/dpo
 dataset: summarizer_test_dpo
 eval_dataset: summarizer_test_dpo
 template: llama3
-cutoff_len: 4096
+cutoff_len: 1600
 
 
 ### Configs
-per_device_eval_batch_size: 2
+per_device_eval_batch_size: 1
 eval_strategy: steps
 eval_steps: 50
-predict_with_generate: true
-output_dir: ./training/configs/outputs/predictions/dpo/summarizer
+output_dir: ./training/outputs/predictions/dpo/summarizer
