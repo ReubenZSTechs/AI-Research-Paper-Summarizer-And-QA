@@ -21,8 +21,7 @@ cutoff_len: 4096
 
 
 ### Configs
-per_device_eval_batch_size: 2
+per_device_eval_batch_size: 1
 eval_strategy: steps
 eval_steps: 50
-predict_with_generate: true
-output_dir: ./training/configs/outputs/predictions/dpo/synthesizer
+output_dir: ./training/outputs/predictions/dpo/synthesizer

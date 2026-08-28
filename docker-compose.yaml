@@ -6,6 +6,7 @@ services:
     runtime: nvidia
     volumes:
       - ${HUGGINGFACE_QUANTIZE_FOLDERPATH}:/root/.cache/huggingface/hub
+      - ./training/outputs/adapters:/adapters
     ports:
       - "15000:15000"
     environment:
@@ -16,6 +17,10 @@ services:
       --quantization modelopt_fp4
       --hf-overrides '{"tie_word_embeddings": false}'
       --served-model-name llm-server
+      --enable-lora
+      --max-loras 4
+      --max-lora-rank 16
+      --lora-modules answer=/adapters/dpo/answer prompt_rewriter=/adapters/sft/prompt_rewriter summarizer=/adapters/dpo/summarizer synthesizer=/adapters/dpo/synthesizer
       --max-model-len 32768
       --gpu-memory-utilization 0.6
       --kv-cache-dtype turboquant_4bit_nc

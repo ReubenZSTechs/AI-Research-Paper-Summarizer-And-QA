@@ -25,4 +25,4 @@ per_device_eval_batch_size: 2
 eval_strategy: steps
 eval_steps: 50
 predict_with_generate: true
-output_dir: ./training/configs/outputs/predictions/sft/prompt_rewriter
+output_dir: ./training/outputs/predictions/sft/prompt_rewriter

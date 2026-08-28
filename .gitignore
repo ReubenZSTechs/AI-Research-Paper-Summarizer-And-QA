@@ -13,4 +13,5 @@ __pycache__/
 training/logs/
 backend/core/logging
 
-DIRECTORY_README.mdbackend/core/logging/*.jsonl
+DIRECTORY_README.md
+backend/core/logging/*.jsonl
